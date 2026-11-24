@@ -1,0 +1,47 @@
+name: CI - build and test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:          # every pull request must pass before merge (quality gate)
+
+jobs:
+  build-and-test:
+    # GitHub-hosted Ubuntu runners come with Docker installed and running,
+    # so Testcontainers can start PostgreSQL with no extra setup.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Show Docker is available
+        run: docker version
+
+      # `mvn verify` runs:
+      #   1. unit tests (Surefire)
+      #   2. *IT integration tests (Failsafe) -> Testcontainers asks Docker to start
+      #      postgres:16-alpine, runs the API tests against it, then removes the container
+      # Any failing test fails the build, so the PR cannot merge.
+      - name: Build and run unit + integration tests
+        run: mvn -B verify
+
+      - name: Prove the test containers were torn down
+        if: always()
+        run: docker ps -a
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports
+            target/failsafe-reports
