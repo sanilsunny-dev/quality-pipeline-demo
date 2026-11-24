@@ -25,6 +25,9 @@ jobs:
       - name: Show Docker is available
         run: docker version
 
+      - name: Set Docker API version for Testcontainers
+        run: echo "api.version=1.44" > ~/.docker-java.properties
+
       # `mvn verify` runs:
       #   1. unit tests (Surefire)
       #   2. *IT integration tests (Failsafe) -> Testcontainers asks Docker to start
